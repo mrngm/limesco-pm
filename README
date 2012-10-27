@@ -15,9 +15,8 @@ To install this module type the following:
 
 DEPENDENCIES
 
-This module requires these other modules and libraries:
-
-  blah blah blah
+This module requires Carp (tested against version 1.17), JSON (tested against
+version 2.53) and LWP::UserAgent (tested against version 6.03).
 
 COPYRIGHT AND LICENCE
 
