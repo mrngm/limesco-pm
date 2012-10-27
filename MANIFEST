@@ -3,3 +3,4 @@ MANIFEST
 README
 LICENSE
 lib/Net/Limesco.pm
+bin/get_token.pl
