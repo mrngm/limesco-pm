@@ -115,7 +115,7 @@ sub getIssuers {
 
 Methods to communicate with the administration part of the Limesco REST API.
 
-=head2 getAccount(accountId)
+=head2 getAccount (accountId)
 
 =cut
 
@@ -126,6 +126,182 @@ sub getAccount {
 	return $self->_get_json("/accounts/$account");
 }
 
+=head2 findAccountsBy (method => value)
+
+=cut
+
+sub findAccountsBy {
+	my ($self, $field, $value) = @_;
+	$self->_debug("Searching for accounts where $field = $value...\n");
+	my $res = $self->_post_json("/accounts/find", {$field => $value});
+	return @$res if($res);
+	return;
+}
+
+=head2 createAccount (options)
+
+options is a hash containing the fields 'email', 'companyName', 'firstName',
+'lastName', 'streetAddress', 'postalCode', 'locality'.
+
+=cut
+
+sub createAccount {
+	my ($self, %in_opts) = @_;
+	my %opts;
+	for(qw(email companyName firstName lastName streetAddress postalCode locality)) {
+		my $val = delete $in_opts{$_};
+		if(!defined $val) {
+			croak "Missing option $_";
+		}
+		$opts{$_} = $val;
+	}
+	foreach(keys %in_opts) {
+		croak "Unknown option $_";
+	}
+	$opts{fullName} = {
+		firstName => delete $opts{firstName},
+		lastName  => delete $opts{lastName},
+	};
+	my $name = $opts{fullName}{firstName} . " " . $opts{fullName}{lastName};
+	$opts{address} = {
+		streetAddress => delete $opts{streetAddress},
+		postalCode => delete $opts{postalCode},
+		locality => delete $opts{locality},
+	};
+	$self->_debug("Creating account for %s\n", $name);
+	my $resp = $self->_post("/accounts", \%opts);
+	my $accountloc = $resp->{location};
+	if(!$accountloc) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	$self->_debug("Account created for %s at %s\n", $name, $accountloc);
+
+	return $self->_get_json_url($accountloc);
+}
+
+=head2 addExternalAccountToAccount (accountId, service => remotename)
+
+Add the remote id "remotename" for service "service" to the account pointed to
+by "accountId".
+
+=cut
+
+sub addExternalAccountToAccount {
+	my ($self, $accountid, $service, $remotename) = @_;
+	$self->_debug("Adding external account %s for %s to account ID %s\n", $remotename, $service, $accountid);
+	my $resp = $self->_post("/accounts/$accountid/addExternalAccounts", {$service => $remotename});
+	if($resp->{error}) {
+		warn $resp->{error} . "\n";
+		return 0;
+	}
+	$self->_debug("External account %s added\n", $remotename);
+	return 1;
+}
+
+=head2 createPayment (options)
+
+options is a hash containing the fields 'accountId', 'currency', 'paymentType',
+'destination', and 'amount', and optionally 'status', 'transactionId' and
+'invoiceIds'.
+
+=cut
+
+sub createPayment {
+	my ($self, %in_opts) = @_;
+	my %opts;
+	## Required options
+	for(qw(accountId currency paymentType destination amount)) {
+		my $val = delete $in_opts{$_};
+		if(!$val) {
+			croak "Missing option $_";
+		}
+		$opts{$_} = $val;
+	}
+	## Optional option
+	for(qw(status invoiceIds transactionId)) {
+		if(exists($in_opts{$_})) {
+			$opts{$_} = delete $in_opts{$_};
+		}
+	}
+	foreach(keys %in_opts) {
+		croak "Unknown option $_";
+	}
+	if($opts{invoiceIds} && ref($opts{invoiceIds}) ne "ARRAY") {
+		croak "invoiceIds option must be an array reference";
+	}
+	my $accountId = delete $opts{accountId};
+	$self->_debug("Creating payment for account ID %s\n", $accountId);
+	my $resp = $self->_post("/accounts/$accountId/payments", \%opts);
+	my $paymentloc = $resp->{location};
+	if(!$paymentloc) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	$self->_debug("Payment created for account ID %s at %s\n", $accountId, $paymentloc);
+
+	return $self->_get_json_url($paymentloc);
+}
+
+=head2 createSim (options)
+
+options is a hash containing the fields 'iccid', 'puk' and 'state', and
+optionally 'contractStartDate', 'phoneNumber', 'sipRealm', 'sipUsername',
+'sipUri', 'sipAuthenticationUsername', 'sipPassword', 'sipExpiry',
+'callConnectivityType', 'ownerAccountId', 'apnType', 'activationInvoiceId'
+and 'lastMonthlyFeesInvoice'.
+
+=cut
+
+sub createSim {
+	my ($self, %in_opts) = @_;
+	my %opts;
+	## Required options
+	for(qw(iccid puk state)) {
+		my $val = delete $in_opts{$_};
+		if(!$val) {
+			croak "Missing option $_";
+		}
+		$opts{$_} = $val;
+	}
+	## Optional options
+	my $hasSip = 0;
+	for(qw( contractStartDate phoneNumber sipRealm sipUsername sipUri
+		sipAuthenticationUsername sipPassword sipExpiry
+		callConnectivityType ownerAccountId apnType
+		activationInvoiceId lastMonthlyFeesInvoice))
+	{
+		if(exists($in_opts{$_})) {
+			$hasSip = 1 if($_ =~ /^sip/);
+			$opts{$_} = delete $in_opts{$_};
+		}
+	}
+	foreach(keys %in_opts) {
+		croak "Unknown option $_";
+	}
+
+	if($hasSip) {
+		$opts{sipSettings} = {};
+		for(qw(sipRealm sipUsername sipUri sipAuthenticationUsername sipPassword sipExpiry)) {
+			my $newName = $_;
+			$newName =~ s/^sip(.)/lc($1)/e;
+			$opts{sipSettings}{$newName} = delete $opts{$_};
+		}
+	}
+
+	$opts{'_id'} = delete $opts{'iccid'};
+
+	$self->_debug("Creating SIM with state %s for account ID %s\n", $opts{state}, $opts{ownerAccountId} || "(none)");
+	my $resp = $self->_post("/sims", \%opts);
+	my $simloc = $resp->{location};
+	if(!$simloc) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	$self->_debug("SIM created at %s\n", $simloc);
+
+	return $self->_get_json_url($simloc);
+}
 
 ## Internal undocumented methods starting here ##
 
@@ -173,8 +349,8 @@ sub __wrap_response {
 }
 
 sub _get_json {
-	my ($self, $uri) = @_;
-	my $resp = $self->_get($uri);
+	my $self = shift;
+	my $resp = $self->_get(@_);
 	if(!$resp->{body}) {
 		warn $resp->{error} . "\n";
 		return;
@@ -188,11 +364,31 @@ sub _get {
 	return $self->_get_url($url, @_);
 }
 
+sub _get_json_url {
+	my ($self, $url) = @_;
+	my $resp = $self->_get_url($url);
+	if(!$resp->{body}) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	return decode_json($resp->{body});
+}
+
 sub _get_url {
 	my ($self, $url, $body, $bodytype) = @_;
 	$self->_debug("Doing GET request to URL: %s\n", $url);
 	my $response = $self->{ua}->get($url, $self->__headers($body, $bodytype));
 	return $self->__wrap_response($response);
+}
+
+sub _post_json {
+	my $self = shift;
+	my $resp = $self->_post(@_);
+	if(!$resp->{body}) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	return decode_json($resp->{body});
 }
 
 sub _post {
