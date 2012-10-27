@@ -10,8 +10,5 @@ if(!defined($pass)) {
 	die "Usage: $0 username password [hostname [port]]";
 }
 
-$hostname ||= "api.limesco.org";
-$port ||= "80";
-
 my $lim = Net::Limesco->new($hostname, $port, 1);
 $lim->obtainToken($user, $pass);
