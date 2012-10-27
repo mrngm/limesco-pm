@@ -17,8 +17,10 @@ Net::Limesco - Perl interface to the Limesco REST API
 =head1 SYNOPSIS
 
   use Net::Limesco;
+  use Data::Dumper;
   my $lim = Net::Limesco->new();
   $lim->obtainToken();
+  print Dumper($lim->getMyInvoices());
 
 =head1 DESCRIPTION
 
@@ -66,6 +68,65 @@ sub obtainToken {
 	return $self->{token};
 }
 
+=head2 getMySims ()
+
+=cut
+
+sub getMySims {
+	my ($self) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining my SIMs...\n");
+	return $self->_get_json("/sims");
+}
+
+=head2 getMyInvoices ()
+
+=cut
+
+sub getMyInvoices {
+	my ($self) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining my invoices...\n");
+	return $self->_get_json("/accounts/~/invoices");
+}
+
+=head2 getMyPayments ()
+
+=cut
+
+sub getMyPayments {
+	my ($self) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining my payments...\n");
+	return $self->_get_json("/accounts/~/payments");
+}
+
+=head2 getIssuers ()
+
+=cut
+
+sub getIssuers {
+	my ($self) = @_;
+	$self->_debug("Obtaining issuers...\n");
+	return $self->_get_json("/ideal/issuers");
+}
+
+=head1 ADMINISTRATOR METHODS
+
+Methods to communicate with the administration part of the Limesco REST API.
+
+=head2 getAccount(accountId)
+
+=cut
+
+sub getAccount {
+	my ($self, $account) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining information about account ID $account...\n");
+	return $self->_get_json("/accounts/$account");
+}
+
+
 ## Internal undocumented methods starting here ##
 
 sub _assertToken {
@@ -109,6 +170,16 @@ sub __wrap_response {
 	} else {
 		return {error => $response->status_line};
 	}
+}
+
+sub _get_json {
+	my ($self, $uri) = @_;
+	my $resp = $self->_get($uri);
+	if(!$resp->{body}) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	return decode_json($resp->{body});
 }
 
 sub _get {
