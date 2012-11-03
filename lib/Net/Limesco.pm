@@ -126,6 +126,18 @@ sub getAccount {
 	return $self->_get_json("/accounts/$account");
 }
 
+=head2 getAllAccounts ()
+
+=cut
+
+sub getAllAccounts {
+	my ($self) = @_;
+	$self->_debug("Retrieving all accounts...\n");
+	my $res = $self->_post_json("/accounts/find", {});
+	return @$res if($res);
+	return;
+}
+
 =head2 findAccountsBy (method => value)
 
 =cut
