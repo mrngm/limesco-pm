@@ -126,6 +126,28 @@ sub getAccount {
 	return $self->_get_json("/accounts/$account");
 }
 
+=head2 getSimsByOwnerId (accountId)
+
+=cut
+
+sub getSimsByOwnerId {
+	my ($self, $accountid) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining SIMs from owner ID $accountid...\n");
+	return @{$self->_get_json("/accounts/$accountid/sims")};
+}
+
+=head2 getSim (simId)
+
+=cut
+
+sub getSim {
+	my ($self, $simid) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining information about SIM ID $simid...\n");
+	return $self->_get_json("/sims/$simid");
+}
+
 =head2 getAllAccounts ()
 
 =cut
