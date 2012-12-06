@@ -46,8 +46,14 @@ my $listbox = $win->add("acctbox", 'Listbox',
 $listbox->focus();
 
 my $accountwin;
+my $simwin;
 $win->set_binding(sub {
-	if($accountwin) {
+	if($simwin) {
+		$simwin->hide();
+		$accountwin->delete('simwin');
+		$accountwin->focus();
+		undef $simwin;
+	} elsif($accountwin) {
 		$accountwin->hide();
 		$win->delete('subwin');
 		$win->focus();
@@ -65,6 +71,9 @@ $listbox->onChange(sub {
 		-border => 1,
 		-bfg => "green",
 		-title => "Account view: " . account_to_str($account));
+
+	my @sims = $lim->getSimsByOwnerId($account_id);
+
 	my $ext = $account->{'externalAccounts'} || {};
 	my $text = join "\n",
 		"ID: " . $account->{'id'},
@@ -77,9 +86,51 @@ $listbox->onChange(sub {
 		"    " . ($account->{'address'}{'postalCode'} || "") . " " . ($account->{'address'}{'locality'} || ""),
 		"External accounts: " . (%$ext ? join(", ", map { $ext->{$_} . " ($_)" } keys %$ext) : "(none)");
 
-	$accountwin->add('accountinfo', 'Label', -text => $text)->show();
-	$accountwin->focus();
+	my $halfheight = $accountwin->height() / 2;
+	$accountwin->add('accountinfo', 'Label', -text => $text, -width => -1, -height => $halfheight)->show();
+	$accountwin->add('simboxtitle', 'Label', -text => "SIMs in this account", -width => -1, -height => 1, -y => $halfheight)->show();
+
+	my $simbox = $accountwin->add("simbox", 'Listbox',
+		-values => [map {$_->{'iccid'}} @sims],
+		-labels => {map {$_->{'iccid'} => sim_to_str($_, 0, 1)} @sims},
+		-vscrollbar => 'right',
+		-hscrollbar => 'bottom',
+		-htmltext => 1,
+		-height => $halfheight,
+		-y => $halfheight + 1,
+		-title => "SIMs in this account",
+	);
+
+	$simbox->show();
 	$accountwin->show();
+	$simbox->focus();
+
+	$simbox->onChange(sub {
+		my $sim_id = $simbox->get();
+		return if(!defined($sim_id));
+		$simbox->clear_selection();
+		my $sim = $lim->getSim($sim_id);
+		$simwin = $accountwin->add('simwin', 'Window',
+			-border => 1,
+			-bfg => "yellow",
+			-title => "SIM view: " . sim_to_str($sim));
+		my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
+		my $text = join "\n",
+			"ICCID: " . $sim->{'iccid'},
+			"PUK: " . $sim->{'puk'},
+			"State: " . $sim->{'state'},
+			"",
+			"Contract start date: " . sprintf("%4d-%02d-%02d", $year+1900, $mon+1, $mday),
+			"Call connectivity type: " . $sim->{'callConnectivityType'},
+			"Phone number: " . $sim->{'phoneNumber'},
+			"Owner: " . account_to_str($lim->getAccount($sim->{'ownerAccountId'}), 0),
+			"APN type: " . $sim->{'apnType'},
+			"Exempt from cost contribution: " . $sim->{'exemptFromCostContribution'};
+		$simwin->add('siminfo', 'Label', -text => $text)->show();
+		$simwin->show();
+		$simwin->focus();
+	});
+
 });
 
 $ui->mainloop();
@@ -116,4 +167,27 @@ sub account_to_str {
 		$namedescr = $html ? ("<underline>$company</underline> ($name)") : "$company ($name)";
 	}
 	return "$marker $namedescr <$email>";
+}
+
+sub sim_to_str {
+	my ($sim, $with_account, $html) = @_;
+	$with_account ||= 0;
+	$html ||= 0;
+
+	my $marker = "";
+	if($sim->{'state'} eq "STOCK") {
+		$marker = "[S]";
+	} elsif($sim->{'state'} eq "ALLOCATED") {
+		$marker = "[A]";
+	} elsif($sim->{'state'} eq "ACTIVATION_REQUESTED") {
+		$marker = "[Q]";
+	} elsif($sim->{'state'} eq "DISABLED") {
+		$marker = "[D]";
+	}
+
+	my $iccid = $sim->{'iccid'};
+	my $phonenr = $sim->{'phoneNumber'};
+	my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
+
+	return sprintf("%s started %4d-%02d-%02d number %s iccid %s", $marker, $year+1900, $mon+1, $mday, $phonenr, $iccid);
 }
