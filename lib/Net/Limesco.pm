@@ -324,8 +324,11 @@ sub _assertToken {
 
 sub _debug {
 	my ($self, $msg, @args) = @_;
-	if($self->{debug}) {
-		printf($msg, @args);
+	$msg = sprintf($msg, @args);
+	if(ref($self->{debug}) eq "CODE") {
+		$self->{debug}->($msg);
+	} elsif($self->{debug}) {
+		print $msg;
 	}
 }
 
