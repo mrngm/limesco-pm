@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use lib "../lib";
 use lib "lib";
+use Encode;
 use Curses;
 use Curses::UI;
 use Net::Limesco;
@@ -83,6 +84,48 @@ $win->set_binding(sub {
 		exit(0);
 	}
 }, "q", KEY_LEFT());
+
+## ADD
+$win->set_binding(sub {
+	if($simwin) {
+		# ignore
+	} elsif($accountwin) {
+		$ui->dialog("SIM creation is not possible yet.");
+	} else {
+		$ui->leave_curses();
+		print "Creating a new account.\n";
+		my @vars = (
+			["First name", "firstName"],
+			["Last name", "lastName"],
+			["Company name (or empty)", "companyName"],
+			["E-mail address", "email"],
+			["Street address", "streetAddress"],
+			["Postal code", "postalCode"],
+			["City / locality (, country)", "locality"],
+		);
+		my %opts;
+		foreach(@vars) {
+			print $_->[0] . "? ";
+			my $var = <STDIN>;
+			$var = decode_utf8($var);
+			1 while chomp($var);
+			$opts{$_->[1]} = $var;
+		}
+		my $account = $lim->createAccount(%opts) or die("Creating an account failed");
+		goto reinit;
+	}
+}, "a");
+
+## UPDATE
+$win->set_binding(sub {
+	if($simwin) {
+		$ui->dialog("SIM updating is not possible yet.");
+	} elsif($accountwin) {
+		$ui->dialog("Account updating is not possible yet.");
+	} else {
+		# ignore
+	}
+}, "u");
 
 $listbox->onChange(sub {
 	my $account_id = $listbox->get();
