@@ -25,7 +25,7 @@ $win->set_binding(sub { $ui->mainloopExit() }, "q");
 
 my $limui = Net::Limesco::UI->new($lim, $ui, $win);
 $win->title("List of accounts");
-my ($listbox, $id) = $limui->list_of_account_ids(map { $_->{'_id'} } $lim->getAllAccounts());
+my ($listbox, $id) = $limui->list_of_account_ids(map { $_->{'id'} } $lim->getAllAccounts());
 $listbox->focus();
 $listbox->onChange(sub {
 	my $account_id = $listbox->get();

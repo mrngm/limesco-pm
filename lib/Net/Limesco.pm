@@ -301,8 +301,6 @@ sub createSim {
 		}
 	}
 
-	$opts{'_id'} = delete $opts{'iccid'};
-
 	$self->_debug("Creating SIM with state %s for account ID %s\n", $opts{state}, $opts{ownerAccountId} || "(none)");
 	my $resp = $self->_post("/sims", \%opts);
 	my $simloc = $resp->{location};

@@ -46,7 +46,7 @@ sub account_to_str {
 			my $ext = $account->{'externalAccounts'};
 			return "[!] Dummy external account: " . join(", ", map { $ext->{$_} . " ($_)" } keys %$ext);
 		}
-		return "$marker " . $account->{'_id'};
+		return "$marker " . $account->{'id'};
 	}
 
 	my $name = $account->{'fullName'}{'firstName'} . " " . $account->{'fullName'}{'lastName'};
@@ -64,8 +64,8 @@ sub list_of_accounts {
 	@accounts = sort { ($a->{'fullName'}{'firstName'}||"") cmp ($b->{'fullName'}{'firstName'}||"") } @accounts;
 	@accounts = sort { ($a->{'fullName'}{'lastName'}||"") cmp ($b->{'fullName'}{'lastName'}||"") } @accounts;
 	my $listbox = $self->{win}->add("acctbox", 'Listbox',
-		-values => [map {$_->{'_id'}} @accounts],
-		-labels => {map {$_->{'_id'} => $self->account_to_str($_, 1)} @accounts},
+		-values => [map {$_->{'id'}} @accounts],
+		-labels => {map {$_->{'id'} => $self->account_to_str($_, 1)} @accounts},
 		-vscrollbar => 'right',
 		-hscrollbar => 'bottom',
 		-htmltext => 1,
@@ -105,7 +105,7 @@ sub show_account {
 
 	my $ext = $account->{'externalAccounts'} || {};
 	my $text = join "\n",
-		"ID: " . $account->{'_id'},
+		"ID: " . $account->{'id'},
 		"E-mail address: " . ($account->{'email'} || "unset"),
 		"Account state: " . ($account->{'state'} || "unset"),
 		"Company name: " . ($account->{'companyName'} || ""),
