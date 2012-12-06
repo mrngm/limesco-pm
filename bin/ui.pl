@@ -19,15 +19,38 @@ if(!$lim->obtainToken($user, $pass)) {
 
 my $ui = Curses::UI->new(-clear_on_exit => 1, -color_support => 1);
 
-my $win = $ui->add('win', 'Window',
+my $win;
+my $accountwin;
+my $simwin;
+
+reinit:
+
+if($simwin) {
+	$simwin->hide();
+	$accountwin->delete('simwin');
+	undef $simwin;
+}
+if($accountwin) {
+	$accountwin->hide();
+	$win->delete('subwin');
+	undef $accountwin;
+}
+if($win) {
+	$win->hide();
+	$ui->delete('win');
+}
+
+$win = $ui->add('win', 'Window',
 	-border => 1,
 	-bfg => "red",
 	-title => "Account list");
+$win->show();
+$win->focus();
 
 #my @account_ids = $lim->getAllAccountIds();
 my @account_ids = map { $_->{'id'} } $lim->getAllAccounts();
 $ui->progress(-max => 1, -message => "Loading account information...");
-my @accounts;
+my @accounts = ();
 foreach(@account_ids) {
 	push @accounts, $lim->getAccount($_);
 	$ui->setprogress(@accounts/@account_ids, "Loading accounts... " . @accounts . "/" . @account_ids);
@@ -45,8 +68,6 @@ my $listbox = $win->add("acctbox", 'Listbox',
 );
 $listbox->focus();
 
-my $accountwin;
-my $simwin;
 $win->set_binding(sub {
 	if($simwin) {
 		$simwin->hide();
