@@ -59,6 +59,7 @@ $win->set_binding(sub {
 
 $listbox->onChange(sub {
 	my $account_id = $listbox->get();
+	$listbox->clear_selection();
 	my $account = $lim->getAccount($account_id);
 	$accountwin = $win->add('subwin', 'Window',
 		-border => 1,
