@@ -151,6 +151,17 @@ sub getSim {
 	return $self->_get_json("/sims/$simid");
 }
 
+=head2 getUnallocatedSims ()
+
+=cut
+
+sub getUnallocatedSims {
+	my ($self) = @_;
+	$self->_assertToken();
+	$self->_debug("Obtaining unallocated SIMs...\n");
+	return @{$self->_get_json("/sims/unallocated")};
+}
+
 =head2 getAllAccounts ()
 
 =cut
@@ -337,6 +348,43 @@ sub createSim {
 
 	return $self->_get_json_url($simloc);
 }
+
+=head2 allocateSim (options)
+
+options is a hash containing the fields 'simIccid', 'ownerAccountId',
+'apn' (APN_NODATA, APN_500MB, APN_2000MB), 'callConnectivityType' (OOTB, DIY),
+and 'numberPorting' (true, false).
+
+=cut
+
+sub allocateSim {
+	my ($self, %in_opts) = @_;
+	my %opts;
+	## Required options
+	for(qw(simIccid ownerAccountId apn callConnectivityType numberPorting)) {
+		my $val = delete $in_opts{$_};
+		if(!$val) {
+			croak "Missing option $_";
+		}
+		$opts{$_} = $val;
+	}
+	## Optional options
+	foreach(keys %in_opts) {
+		croak "Unknown option $_";
+	}
+
+	my $iccid = delete $opts{'simIccid'};
+	$self->_debug("Allocating SIM %s to account ID %s\n", $iccid, $opts{'ownerAccountId'});
+	my $resp = $self->_post("/sims/$iccid/allocate", \%opts);
+	if($resp->{error}) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	$self->_debug("SIM allocated\n");
+	return 1;
+}
+
+
 
 ## Internal undocumented methods starting here ##
 
