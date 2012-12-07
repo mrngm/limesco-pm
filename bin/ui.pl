@@ -112,6 +112,7 @@ $win->set_binding(sub {
 			$opts{$_->[1]} = $var;
 		}
 		my $account = $lim->createAccount(%opts) or die("Creating an account failed");
+		$ui->reset_curses();
 		goto reinit;
 	}
 }, "a");
