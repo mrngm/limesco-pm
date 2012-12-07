@@ -23,6 +23,7 @@ my $ui = Curses::UI->new(-clear_on_exit => 1, -color_support => 1);
 my $win;
 my $accountwin;
 my $simwin;
+my $allocate_listbox;
 
 reinit:
 
@@ -70,7 +71,12 @@ my $listbox = $win->add("acctbox", 'Listbox',
 $listbox->focus();
 
 $win->set_binding(sub {
-	if($simwin) {
+	if($allocate_listbox) {
+		$allocate_listbox->hide();
+		$accountwin->delete('sim_allocbox');
+		$accountwin->focus();
+		undef $allocate_listbox;
+	} elsif($simwin) {
 		$simwin->hide();
 		$accountwin->delete('simwin');
 		$accountwin->focus();
@@ -90,7 +96,55 @@ $win->set_binding(sub {
 	if($simwin) {
 		# ignore
 	} elsif($accountwin) {
-		$ui->dialog("SIM creation is not possible yet.");
+		my $account_id = $accountwin->userdata();
+		my @unallocated_sims = $lim->getUnallocatedSims();
+		my $allocate_listbox = $accountwin->add('sim_allocbox', 'Listbox',
+			-values => [map {$_->{'iccid'}} @unallocated_sims],
+			-labels => {map {$_->{'iccid'} => sim_to_str($_, 0, 1)} @unallocated_sims},
+			-vscrollbar => 'right',
+			-hscrollbar => 'bottom',
+			-htmltext => 1,
+			-title => "Select a SIM to allocate",
+		);
+		$allocate_listbox->focus();
+		$allocate_listbox->onChange(sub {
+			my $sim_id = $allocate_listbox->get();
+			$allocate_listbox->clear_selection();
+			my $apn = "";
+			my $cct = "";
+			my $npt = "";
+			$ui->leave_curses();
+			until($apn eq "APN_NODATA" || $apn eq "APN_500MB" || $apn eq "APN_2000MB") {
+				print "Valid inputs are: APN_NODATA, APN_500MB, APN_2000MB.\n";
+				print "Internet / APN type? ";
+				$apn = <STDIN>;
+				1 while chomp $apn;
+			}
+			until($cct eq "DIY" || $cct eq "OOTB") {
+				print "Valid inputs are: DIY, OOTB.\n";
+				print "Call connectivity type? ";
+				$cct = <STDIN>;
+				1 while chomp $cct;
+			}
+			until($npt eq "true" || $npt eq "false") {
+				print "Valid inputs are: true, false.\n";
+				print "Will a number be ported immediately? ";
+				$npt = <STDIN>;
+				1 while chomp $npt;
+			}
+			if(!$lim->allocateSim(
+				simIccid => $sim_id,
+				ownerAccountId => $account_id,
+				apn => $apn,
+				callConnectivityType => $cct,
+				numberPorting => $npt))
+			{
+				print "Allocation failed. Press enter to reinit.\n";
+				<STDIN>;
+			}
+			$ui->reset_curses();
+			goto reinit;
+		});
 	} else {
 		$ui->leave_curses();
 		print "Creating a new account.\n";
@@ -135,6 +189,7 @@ $listbox->onChange(sub {
 	$accountwin = $win->add('subwin', 'Window',
 		-border => 1,
 		-bfg => "green",
+		-userdata => $account_id,
 		-title => "Account view: " . account_to_str($account));
 
 	my @sims = $lim->getSimsByOwnerId($account_id);
