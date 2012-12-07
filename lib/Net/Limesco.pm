@@ -127,6 +127,18 @@ sub getAccount {
 	return $self->_get_json("/accounts/$account");
 }
 
+=head2 getAccountValidation (accountId)
+
+=cut
+
+sub getAccountValidation {
+	my ($self, $accountid) = @_;
+	croak "Missing account ID" if(!$accountid);
+	$self->_assertToken();
+	$self->_debug("Obtaining validation information about account ID $accountid...\n");
+	return @{$self->_get_json("/accounts/$accountid/validate")};
+}
+
 =head2 getSimsByOwnerId (accountId)
 
 =cut
