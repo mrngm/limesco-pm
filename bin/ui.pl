@@ -179,16 +179,24 @@ $listbox->onChange(sub {
 			-border => 1,
 			-bfg => "yellow",
 			-title => "SIM view: " . sim_to_str($sim));
-		my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
+		my $csd = "Not started yet";
+		if($sim->{'contractStartDate'}) {
+			my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
+			$csd = sprintf("%4d-%02d-%02d", $year + 1900, $mon + 1, $mday);
+		}
+		my $owner = "(none)";
+		if($sim->{'ownerAccountId'}) {
+			$owner = account_to_str($lim->getAccount($sim->{'ownerAccountId'}), 0);
+		}
 		my $text = join "\n",
 			"ICCID: " . $sim->{'iccid'},
 			"PUK: " . $sim->{'puk'},
 			"State: " . $sim->{'state'},
 			"",
-			"Contract start date: " . sprintf("%4d-%02d-%02d", $year+1900, $mon+1, $mday),
+			"Contract start date: $csd",
 			"Call connectivity type: " . $sim->{'callConnectivityType'},
 			"Phone number: " . $sim->{'phoneNumber'},
-			"Owner: " . account_to_str($lim->getAccount($sim->{'ownerAccountId'}), 0),
+			"Owner: $owner",
 			"APN type: " . $sim->{'apnType'},
 			"Exempt from cost contribution: " . $sim->{'exemptFromCostContribution'};
 		$simwin->add('siminfo', 'Label', -text => $text)->show();
@@ -239,9 +247,11 @@ sub sim_to_str {
 	$with_account ||= 0;
 	$html ||= 0;
 
+	my $iccid = $sim->{'iccid'};
+
 	my $marker = "";
 	if($sim->{'state'} eq "STOCK") {
-		$marker = "[S]";
+		return "Stock SIM, ICCID " . $iccid;
 	} elsif($sim->{'state'} eq "ALLOCATED") {
 		$marker = "[A]";
 	} elsif($sim->{'state'} eq "ACTIVATION_REQUESTED") {
@@ -250,9 +260,11 @@ sub sim_to_str {
 		$marker = "[D]";
 	}
 
-	my $iccid = $sim->{'iccid'};
-	my $phonenr = $sim->{'phoneNumber'};
+	my $phonenr = $sim->{'phoneNumber'} || "(none)";
+	if(!$sim->{'contractStartDate'}) {
+		return "$marker no contract start date, number $phonenr, iccid $iccid";
+	}
 	my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
 
-	return sprintf("%s started %4d-%02d-%02d number %s iccid %s", $marker, $year+1900, $mon+1, $mday, $phonenr, $iccid);
+	return sprintf("%s started %4d-%02d-%02d, number %s, iccid %s", $marker, $year+1900, $mon+1, $mday, $phonenr, $iccid);
 }
