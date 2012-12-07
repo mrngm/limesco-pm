@@ -121,6 +121,7 @@ Methods to communicate with the administration part of the Limesco REST API.
 
 sub getAccount {
 	my ($self, $account) = @_;
+	croak "Missing account ID" if(!$account);
 	$self->_assertToken();
 	$self->_debug("Obtaining information about account ID $account...\n");
 	return $self->_get_json("/accounts/$account");
@@ -132,6 +133,7 @@ sub getAccount {
 
 sub getSimsByOwnerId {
 	my ($self, $accountid) = @_;
+	croak "Missing account ID" if(!$accountid);
 	$self->_assertToken();
 	$self->_debug("Obtaining SIMs from owner ID $accountid...\n");
 	return @{$self->_get_json("/accounts/$accountid/sims")};
@@ -143,6 +145,7 @@ sub getSimsByOwnerId {
 
 sub getSim {
 	my ($self, $simid) = @_;
+	croak "Missing SIM ID" if(!$simid);
 	$self->_assertToken();
 	$self->_debug("Obtaining information about SIM ID $simid...\n");
 	return $self->_get_json("/sims/$simid");
