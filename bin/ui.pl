@@ -204,7 +204,8 @@ $listbox->onChange(sub {
 		"Address: ",
 		"    " . ($account->{'address'}{'streetAddress'} || ""),
 		"    " . ($account->{'address'}{'postalCode'} || "") . " " . ($account->{'address'}{'locality'} || ""),
-		"External accounts: " . (%$ext ? join(", ", map { $ext->{$_} . " ($_)" } keys %$ext) : "(none)");
+		"External accounts: " . (%$ext ? join(", ", map { $ext->{$_} . " ($_)" } keys %$ext) : "(none)"),
+		getAccountValidationLines($account->{'id'});
 
 	my $halfheight = $accountwin->height() / 2;
 	$accountwin->add('accountinfo', 'Label', -text => $text, -width => -1, -height => $halfheight)->show();
@@ -322,4 +323,16 @@ sub sim_to_str {
 	my (undef, undef, undef, $mday, $mon, $year) = localtime($sim->{'contractStartDate'} / 1000);
 
 	return sprintf("%s started %4d-%02d-%02d, number %s, iccid %s", $marker, $year+1900, $mon+1, $mday, $phonenr, $iccid);
+}
+
+sub getAccountValidationLines {
+	my ($accountid) = @_;
+	my @validation = $lim->getAccountValidation($accountid);
+	return () if(@validation == 0);
+
+	my @lines = ("");
+	foreach(@validation) {
+		push @lines, "!! Proposed change: ".$_->{'explanation'};
+	}
+	return @lines;
 }
