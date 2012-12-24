@@ -2,7 +2,7 @@ Net-Limesco version 1.0
 =======================
 
 This module provides a Perl interface to the Limesco API at
-http://api.limesco.org/.
+https://api.limesco.org/.
 
 INSTALLATION
 
@@ -20,6 +20,7 @@ version 2.53) and LWP::UserAgent (tested against version 6.03).
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2012 by Sjors Gielen
+Copyright (C) 2012 Limesco B.V.
+Written by Sjors Gielen
 
 See the LICENSE file for the license on this module.
