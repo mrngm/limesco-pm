@@ -7,6 +7,9 @@ use Encode;
 use Curses;
 use Curses::UI;
 use Net::Limesco;
+use Term::Menu;
+use Test::Deep::NoTest;
+use Data::Dumper;
 
 my ($user, $pass, $hostname, $port) = @ARGV;
 if(!defined($pass)) {
@@ -174,14 +177,24 @@ $win->set_binding(sub {
 
 ## UPDATE
 $win->set_binding(sub {
-	if($simwin) {
-		$ui->dialog("SIM updating is not possible yet.");
+	if($allocate_listbox) {
+		# ignore
+	} elsif($simwin) {
+		$ui->leave_curses();
+		my $simid = $simwin->userdata();
+		update_sim($simid);
+		$ui->reset_curses();
+		goto reinit;
 	} elsif($accountwin) {
-		$ui->dialog("Account updating is not possible yet.");
+		$ui->leave_curses();
+		my $accountid = $accountwin->userdata();
+		update_account($accountid);
+		$ui->reset_curses();
+		goto reinit;
 	} else {
 		# ignore
 	}
-}, "u");
+}, "u", "e");
 
 $listbox->onChange(sub {
 	my $account_id = $listbox->get();
@@ -235,6 +248,7 @@ $listbox->onChange(sub {
 		$simwin = $accountwin->add('simwin', 'Window',
 			-border => 1,
 			-bfg => "yellow",
+			-userdata => $sim_id,
 			-title => "SIM view: " . sim_to_str($sim));
 		my $csd = "Not started yet";
 		if($sim->{'contractStartDate'}) {
@@ -351,4 +365,317 @@ sub getAccountValidationLines {
 		push @lines, "!! Proposed change: ".$_->{'explanation'};
 	}
 	return @lines;
+}
+
+sub update_account {
+	my ($accountid) = @_;
+	my $account = $lim->getAccount($accountid);
+	return if(!$account);
+	# Two types of account updates are available: updates suggested by the API,
+	# and direct field updates.
+	# Updates suggested by the API might spawn third actions to take, such as
+	# sending an e-mail. They may also cause direct field updates. When the
+	# updates are explicitly confirmed, the field updates are written into the
+	# Account object and sent back to the API, which will save them into the
+	# database.
+	my @suggested = $lim->getAccountValidation($accountid);
+	my $suggested = [map {[0, $_]} @suggested];
+	my $updates = {};
+	warn Dumper($account);
+	update_object_step("account", $account, $suggested, $updates);
+	return if(keys %$updates == 0);
+	if(!eq_deeply($account, $lim->getAccount($accountid))) {
+		warn "WARNING: Account changed during process, refusing to process changes.\n";
+		warn Dumper($updates);
+		die "Fatal error.\n";
+	}
+	warn "Old account:\n";
+	warn Dumper($account);
+	warn "\n";
+	recursive_update($account, $updates);
+	warn "New account:\n";
+	warn Dumper($account);
+	warn "\n";
+	$lim->saveAccount($account);
+}
+
+sub update_sim {
+	my ($simid) = @_;
+	my $sim = $lim->getSim($simid);
+	return if(!$sim);
+	my @suggested = $lim->getSimValidation($simid);
+	my $suggested = [map {[0, $_]} @suggested];
+	my $updates = {};
+	warn Dumper($sim);
+	update_object_step("sim", $sim, $suggested, $updates);
+	return if(keys %$updates == 0);
+	if(!eq_deeply($sim, $lim->getSim($simid))) {
+		warn "WARNING: SIM changed during process, refusing to process changes.\n";
+		warn Dumper($updates);
+		die "Fatal error.\n";
+	}
+	warn "Old SIM:\n";
+	warn Dumper($sim);
+	warn "\n";
+	recursive_update($sim, $updates);
+	warn "New SIM:\n";
+	warn Dumper($sim);
+	warn "\n";
+	$lim->saveSim($sim);
+}
+
+sub recursive_update {
+	my ($a, $b) = @_;
+	foreach(keys %$b) {
+		my $u = $b->{$_};
+		if(ref($u)) {
+			die "Only able to process hashes in recursive_update" if(ref($u) ne "HASH");
+			$a->{$_} ||= {};
+			recursive_update($a->{$_}, $b->{$_});
+		} else {
+			$a->{$_} = $b->{$_};
+		}
+	}
+}
+
+sub update_object_step {
+	my ($type, $object, $suggested, $proposed_updates) = @_;
+
+	system 'clear';
+
+	if(%$proposed_updates) {
+		print "Planned updates:\n";
+		foreach(keys %$proposed_updates) {
+			my $u = $proposed_updates->{$_};
+			$u .= "\n" if(!ref($u));
+			$u = Dumper($u) if(ref($u));
+			print "  $_ => $u";
+		}
+	}
+
+	my $prompt = Term::Menu->new(
+		beforetext => "Available actions:",
+		aftertext => "Select an action: ");
+
+	my $choices = 0;
+	my %options;
+
+	for(my $i = 0; $i < @$suggested; ++$i) {
+		my ($rerun, $suggestion) = @{$suggested->[$i]};
+		my $title = ($rerun ? "Re-run suggested: " : "Suggested: ") . $suggestion->{'explanation'};
+		$options{'sugg_' . $i} = [$title, ++$choices];
+	}
+
+	$options{'specific'} = ["Update specific field", ++$choices];
+
+	my $answer = $prompt->menu(
+		write  => ["Write updates", "w"],
+		cancel => ["Cancel updates", "c"],
+		%options
+	);
+	print "\n";
+	if($answer eq "write") {
+		return;
+	} elsif($answer eq "cancel") {
+		for(keys %$proposed_updates) {
+			delete $proposed_updates->{$_};
+		}
+		return;
+	} elsif($answer eq "specific") {
+		$prompt = Term::Menu->new(
+			beforetext => "What field to update?",
+			aftertext => "Select an action: ");
+		$choices = 0;
+		%options = ();
+		foreach(keys %$object) {
+			next if($_ eq "id");
+			$options{'opt_' . $_} = [$_, ++$choices];
+		}
+		$answer = $prompt->menu(
+			cancel => ["Cancel update", "c"],
+			%options);
+		print "\n";
+		if($answer eq "cancel") {
+			# do nothing
+		} elsif($answer =~ /^opt_(.+)$/) {
+			# update field $1
+			run_object_field_update($type, $object, $proposed_updates, $1);
+		} else {
+			die "Unexpected answer from menu";
+		}
+	} elsif($answer =~ /^sugg_(\d+)$/) {
+		my ($suggestion) = $suggested->[$1][1];
+		if(run_object_suggestion($type, $object, $proposed_updates, $suggestion)) {
+			$suggested->[$1][0] = 1;
+		}
+	} else {
+		die "Unexpected answer from menu";
+	}
+	print "\n\nReturning to menu...\n";
+	sleep 1;
+	return update_object_step($type, $object, $suggested, $proposed_updates);
+}
+
+sub run_object_suggestion {
+	my ($type, $object, $proposed_updates, $suggestion) = @_;
+	print "Running suggestion " . $suggestion->{'identifier'} . ": " . $suggestion->{'explanation'} . "\n";
+	if($type eq "account") {
+		print "On Account: " . account_to_str($object) . "\n\n";
+	} elsif($type eq "sim") {
+		print "On SIM: " . sim_to_str($object) . "\n\n";
+	} else {
+		die "Unknown object type";
+	}
+	my $ran_succesfully = 1;
+
+	my $these_proposed_updates = $suggestion->{'changes'};
+	if($type eq "account" && $suggestion->{'identifier'} eq "ASK_CONFIRMATION") {
+		print "Send the following e-mail: \n";
+		print "TODO...\n";
+		print "\nPress ENTER when that's done... ";
+		<STDIN>;
+	} else {
+		print "Warning: Unchecked suggestion.\n";
+	}
+
+	print "\n";
+
+	if(%$these_proposed_updates == 0) {
+		print "No updates for this suggestion. Press ENTER to continue.\n";
+		<STDIN>;
+		return $ran_succesfully;
+	}
+
+	print "Updates that will be added to planned updates:\n";
+	foreach(keys %$these_proposed_updates) {
+		print "  $_ => " . $these_proposed_updates->{$_} . "\n";
+	}
+	my $prompt = Term::Menu->new(
+		beforetext => "Add these updates?",
+		aftertext => "Select an action: ");
+	my $answer = $prompt->menu(
+		1 => ["Yes", "y"],
+		0 => ["No", "n"]);
+	if($answer) {
+		foreach(keys %$these_proposed_updates) {
+			$proposed_updates->{$_} = $these_proposed_updates->{$_};
+		}
+		return 1;
+	}
+	return 0;
+}
+
+sub run_object_field_update {
+	my ($type, $object, $proposed_updates, $field) = @_;
+
+	my %closed_choices;
+	my %hashmaps;
+	my @date_fields;
+
+	if($type eq "account") {
+		%closed_choices = (
+			state => [qw(UNCONFIRMED CONFIRMATION_REQUESTED CONFIRMED CONFIRMATION_IMPOSSIBLE DEACTIVATED)],
+		);
+		%hashmaps = (
+			fullName => [qw(firstName lastName)],
+			address  => [qw(streetAddress postalCode locality)],
+		);
+	} elsif($type eq "sim") {
+		%closed_choices = (
+			state => [qw(STOCK ALLOCATED ACTIVATION_REQUESTED ACTIVATED DISABLED)],
+			apnType => [qw(APN_NODATA APN_500MB APN_2000MB)],
+			portingState => [qw(NO_PORT WILL_PORT PORT_PENDING PORT_DATE_KNOWN PORTING_COMPLETED)],
+			exemptFromCostContribution => [qw(true false)],
+			callConnectivityType => [qw(OOTB DIY)],
+		);
+		%hashmaps = (
+			sipSettings => [qw(realm username authenticationUsername password uri expiry)],
+			lastMonthlyFeesInvoice => [qw(year month invoiceId)],
+		);
+		@date_fields = qw(contractStartDate);
+	} else {
+		die "Unknown type";
+	}
+	my @closed_options = keys %closed_choices;
+	my @hashmap_options = keys %hashmaps;
+
+	if(ref($object->{$field}) && !($field ~~ @hashmap_options)) {
+		print "Unable to update field $field: it's a complex structure.\n";
+		return;
+	}
+	print "Updating field $field.\n";
+	my $curval = $object->{$field};
+	$curval = Dumper($curval) if(ref($curval));
+	print "Current value: $curval\n";
+	if(exists $proposed_updates->{$field}) {
+		my $planupd = $proposed_updates->{$field};
+		$planupd = Dumper($planupd) if(ref($planupd));
+		print "Planned update: $planupd\n";
+	}
+	
+	if($field ~~ @closed_options) {
+		my $prompt = Term::Menu->new(
+			beforetext => "Set it to?",
+			aftertext => "Select an action: ");
+		my %options;
+		my $count = 0;
+		foreach(@{$closed_choices{$field}}) {
+			$options{'opt_' . $_} = [$_, ++$count];
+		}
+		my $answer = $prompt->menu(
+			"cancel" => ["Cancel", "c"],
+			%options
+		);
+		if($answer eq "cancel") {
+			# ignore
+		} elsif($answer =~ /^opt_(.+)$/) {
+			$proposed_updates->{$field} = $1;
+		} else {
+			die "Unexpected answer from menu";
+		}
+	} elsif($field ~~ @hashmap_options) {
+		my @subfields = @{$hashmaps{$field}};
+		my $prompt = Term::Menu->new(
+			beforetext => "Set what subfield?",
+			aftertext => "Select an action: ");
+		my %options;
+		$options{$_} = [$subfields[$_-1], $_] for(1 .. @subfields);
+		my $answer = $prompt->menu(
+			q => ["Cancel action", "q"],
+			%options
+		);
+		if(!$answer || $answer eq "q") {
+			return;
+		}
+		my $subfield = $subfields[$answer-1];
+		if(!defined($subfield)) {
+			die "Unexpected answer from menu";
+		}
+		print "\nEnter a new value for field ".$field."->$subfield, or underscore ('_') to cancel:\n";
+		my $value = <STDIN>;
+		$value = decode_utf8($value);
+		1 while chomp($value);
+		if($value ne "_") {
+			$proposed_updates->{$field}{$subfield} = $value;
+		}
+	} elsif($field ~~ @date_fields) {
+		print "Enter a date, in the format YYYY-MM-DD (i.e. 2012-10-13), or nothing to cancel:\n";
+		my $value = <STDIN>;
+		1 while chomp($value);
+		use Time::Local;
+		if($value =~ /^(\d\d\d\d)-(\d\d)-(\d\d)$/) {
+			$proposed_updates->{$field} = timelocal(0, 0, 0, $3, $2-1, $1-1900) * 1000;
+		} else {
+			print "That's not valid input.\n";
+		}
+	} else {
+		# Open choice
+		print "Enter a new value, or underscore ('_') to cancel:\n";
+		my $value = <STDIN>;
+		$value = decode_utf8($value);
+		1 while chomp($value);
+		if($value ne "_") {
+			$proposed_updates->{$field} = $value;
+		}
+	}
 }
