@@ -245,6 +245,24 @@ $listbox->onChange(sub {
 		if($sim->{'ownerAccountId'}) {
 			$owner = account_to_str($lim->getAccount($sim->{'ownerAccountId'}), 0);
 		}
+		my @sipsettings = "(No SIP settings found in this SIM)";
+		if($sim->{'sipSettings'}) {
+			my $s = $sim->{'sipSettings'};
+			@sipsettings = (
+				"Realm: " . $s->{'realm'},
+				"Username: " . $s->{'username'},
+				"Authentication username: " . $s->{'authenticationUsername'},
+				"Password: " . $s->{'password'},
+				"URI: " . $s->{'uri'},
+				"Expiry: " . $s->{'expiry'},
+				"SpeakUp trunk password: " . $s->{'speakupTrunkPassword'}
+			);
+		}
+		my $lmfi = "(none)";
+		if($sim->{'lastMonthlyFeesInvoice'}) {
+			my $i = $sim->{'lastMonthlyFeesInvoice'};
+			$lmfi = sprintf("At %02d-%04d: %s", $i->{'year'}, $i->{'month'}, $i->{'invoiceId'});
+		}
 		my $text = join "\n",
 			"ICCID: " . $sim->{'iccid'},
 			"PUK: " . $sim->{'puk'},
@@ -253,9 +271,14 @@ $listbox->onChange(sub {
 			"Contract start date: $csd",
 			"Call connectivity type: " . $sim->{'callConnectivityType'},
 			"Phone number: " . $sim->{'phoneNumber'},
+			"Porting state: " . $sim->{'portingState'},
 			"Owner: $owner",
 			"APN type: " . $sim->{'apnType'},
-			"Exempt from cost contribution: " . $sim->{'exemptFromCostContribution'};
+			"Exempt from cost contribution: " . $sim->{'exemptFromCostContribution'},
+			"Activation invoice ID: " . $sim->{'activationInvoiceId'},
+			"Last monthly fees invoice: $lmfi",
+			"",
+			@sipsettings;
 		$simwin->add('siminfo', 'Label', -text => $text)->show();
 		$simwin->show();
 		$simwin->focus();
