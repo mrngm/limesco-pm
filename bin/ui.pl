@@ -60,8 +60,8 @@ foreach(@account_ids) {
 }
 $ui->noprogress;
 
-@accounts = sort { ($a->{'fullName'}{'firstName'}||"") cmp ($b->{'fullName'}{'firstName'}||"") } @accounts;
-@accounts = sort { ($a->{'fullName'}{'lastName'}||"") cmp ($b->{'fullName'}{'lastName'}||"") } @accounts;
+@accounts = sort { lc($a->{'fullName'}{'firstName'}||"") cmp lc($b->{'fullName'}{'firstName'}||"") } @accounts;
+@accounts = sort { lc($a->{'fullName'}{'lastName'}||"") cmp lc($b->{'fullName'}{'lastName'}||"") } @accounts;
 my $listbox = $win->add("acctbox", 'Listbox',
 	-values => [map {$_->{'id'}} @accounts],
 	-labels => {map {$_->{'id'} => account_to_str($_, 1)} @accounts},
