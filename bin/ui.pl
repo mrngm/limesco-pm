@@ -268,7 +268,6 @@ exit;
 
 sub account_to_str {
 	my ($account, $html) = @_;
-	$html ||= 0;
 
 	my $marker = "";
 	if($account->{'state'} eq "UNCONFIRMED") {
@@ -289,14 +288,7 @@ sub account_to_str {
 		return "$marker " . $account->{'id'};
 	}
 
-	my $name = $account->{'fullName'}{'firstName'} . " " . $account->{'fullName'}{'lastName'};
-	my $email = $account->{'email'};
-	my $company = $account->{'companyName'};
-	my $namedescr = $html ? ("<underline>" . $name . "</underline>") : $name;
-	if($company) {
-		$namedescr = $html ? ("<underline>$company</underline> ($name)") : "$company ($name)";
-	}
-	return "$marker $namedescr <$email>";
+	return $marker . " " . $lim->account_to_str($account, $html);
 }
 
 sub sim_to_str {

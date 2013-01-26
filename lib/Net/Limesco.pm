@@ -450,7 +450,33 @@ sub allocateSim {
 	return 1;
 }
 
+=head1 DISPLAY METHODS
 
+=head2 account_to_str ($account, $html)
+
+=cut
+
+sub account_to_str {
+	my ($self, $account, $html) = @_;
+	$html ||= 0;
+
+	if(!$account || ref($account) ne "HASH" || !$account->{'id'}) {
+		return "Invalid account";
+	}
+
+	if(!$account->{'email'} || !$account->{'fullName'} || !$account->{'fullName'}{'lastName'}) {
+		return "Invalid account " . $account->{'id'};
+	}
+
+	my $name = $account->{'fullName'}{'firstName'} . " " . $account->{'fullName'}{'lastName'};
+	my $email = $account->{'email'};
+	my $company = $account->{'companyName'};
+	my $namedescr = $html ? ("<underline>" . $name . "</underline>") : $name;
+	if($company) {
+		$namedescr = $html ? ("<underline>$company</underline> ($name)") : "$company ($name)";
+	}
+	return "$namedescr <$email>";
+}
 
 ## Internal undocumented methods starting here ##
 
