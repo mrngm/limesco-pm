@@ -127,6 +127,32 @@ sub getAccount {
 	return $self->_get_json("/accounts/$account");
 }
 
+=head2 saveAccount (account)
+
+=cut
+
+sub saveAccount {
+	my ($self, $account) = @_;
+	my $id = $account->{'id'};
+	croak "Missing account ID (use createAccount to create one)" if(!$id);
+	$self->_assertToken();
+	$self->_debug("Storing account with ID $id\n");
+	return $self->_put("/accounts/$id", $account);
+}
+
+=head2 saveSim (sim)
+
+=cut
+
+sub saveSim {
+	my ($self, $sim) = @_;
+	my $id = $sim->{'iccid'};
+	croak "Missing SIM ID (use createSim to create one)" if(!$id);
+	$self->_assertToken();
+	$self->_debug("Storing SIM with ID $id\n");
+	return $self->_put("/sims/$id", $sim);
+}
+
 =head2 getAccountValidation (accountId)
 
 =cut
@@ -495,10 +521,23 @@ sub _post {
 	return $self->_post_url($url, @_);
 }
 
+sub _put {
+	my $self = shift;
+	my $url = $self->__url(shift);
+	return $self->_put_url($url, @_);
+}
+
 sub _post_url {
 	my ($self, $url, $body, $bodytype) = @_;
 	$self->_debug("Doing POST request to URL: %s\n", $url);
 	my $response = $self->{ua}->post($url, $self->__headers($body, $bodytype));
+	return $self->__wrap_response($response);
+}
+
+sub _put_url {
+	my ($self, $url, $body, $bodytype) = @_;
+	$self->_debug("Doing PUT request to URL: %s\n", $url);
+	my $response = $self->{ua}->put($url, $self->__headers($body, $bodytype));
 	return $self->__wrap_response($response);
 }
 
