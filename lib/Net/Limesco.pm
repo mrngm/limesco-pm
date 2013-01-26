@@ -173,6 +173,26 @@ sub getAccountValidation {
 	return @{decode_json($response->{'body'})};
 }
 
+=head2 getSimValidation (simId)
+
+=cut
+
+sub getSimValidation {
+	my ($self, $simid) = @_;
+	croak "Missing SIM ICCID" if(!$simid);
+	$self->_assertToken();
+	$self->_debug("Obtaining validation information about SIM ICCID $simid...\n");
+	my $response = $self->_get("/sims/$simid/validate");
+	if($response->{'success'} && $response->{'code'} == 204) { # No content
+		return ();
+	}
+	if(!$response->{'body'}) {
+		warn $response->{'error'} . "\n";
+		return;
+	}
+	return @{decode_json($response->{'body'})};
+}
+
 =head2 getSimsByOwnerId (accountId)
 
 =cut
