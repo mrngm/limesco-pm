@@ -13,7 +13,8 @@ if(!defined($pass)) {
 	die "Usage: $0 username password [hostname [port]]";
 }
 
-my $lim = Net::Limesco->new($hostname, $port, 0 && sub { print STDERR $_[0] });
+open STDERR, '>', "ui.log" or die $!;
+my $lim = Net::Limesco->new($hostname, $port, 1 && sub { print STDERR $_[0] });
 if(!$lim->obtainToken($user, $pass)) {
 	die "Couldn't obtain token";
 }
