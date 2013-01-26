@@ -102,6 +102,10 @@ $win->set_binding(sub {
 	} elsif($accountwin) {
 		my $account_id = $accountwin->userdata();
 		my @unallocated_sims = $lim->getUnallocatedSims();
+		if(@unallocated_sims == 0) {
+			$ui->dialog("There are no unallocated SIMs to allocate.");
+			return;
+		}
 		my $allocate_listbox = $accountwin->add('sim_allocbox', 'Listbox',
 			-values => [map {$_->{'iccid'}} @unallocated_sims],
 			-labels => {map {$_->{'iccid'} => sim_to_str($_, 0, 1)} @unallocated_sims},
