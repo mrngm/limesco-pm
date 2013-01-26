@@ -162,7 +162,15 @@ sub getAccountValidation {
 	croak "Missing account ID" if(!$accountid);
 	$self->_assertToken();
 	$self->_debug("Obtaining validation information about account ID $accountid...\n");
-	return @{$self->_get_json("/accounts/$accountid/validate")};
+	my $response = $self->_get("/accounts/$accountid/validate");
+	if($response->{'success'} && $response->{'code'} == 204) { # No content
+		return ();
+	}
+	if(!$response->{'body'}) {
+		warn $response->{'error'} . "\n";
+		return;
+	}
+	return @{decode_json($response->{'body'})};
 }
 
 =head2 getSimsByOwnerId (accountId)
@@ -466,9 +474,13 @@ sub __wrap_response {
 	if($response->is_success) {
 		my $location = $response->header("Location");
 		return {body => $response->decoded_content,
-			location => $location};
+			location => $location,
+			success => 1,
+			code => $response->code};
 	} else {
-		return {error => $response->status_line};
+		return {error => $response->status_line,
+			success => 0,
+			code => $response->code};
 	}
 }
 
