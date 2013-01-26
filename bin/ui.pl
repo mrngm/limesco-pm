@@ -269,11 +269,11 @@ exit;
 sub account_to_str {
 	my ($account, $html) = @_;
 
-	my $marker = "";
+	my $marker = "   ";
 	if($account->{'state'} eq "UNCONFIRMED") {
 		$marker = "[U]";
 	} elsif($account->{'state'} eq "CONFIRMATION_IMPOSSIBLE") {
-		$marker = "[CI]";
+		$marker = "[X]";
 	} elsif($account->{'state'} eq "CONFIRMATION_REQUESTED") {
 		$marker = "[C]";
 	} elsif($account->{'state'} eq "DEACTIVATED") {
