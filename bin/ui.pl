@@ -97,7 +97,9 @@ $win->set_binding(sub {
 
 ## ADD
 $win->set_binding(sub {
-	if($simwin) {
+	if($allocate_listbox) {
+		# ignore
+	} elsif($simwin) {
 		# ignore
 	} elsif($accountwin) {
 		my $account_id = $accountwin->userdata();
