@@ -536,9 +536,33 @@ sub run_object_suggestion {
 
 	my $these_proposed_updates = $suggestion->{'changes'};
 	if($type eq "account" && $suggestion->{'identifier'} eq "ASK_CONFIRMATION") {
-		print "Send the following e-mail: \n";
-		print "TODO...\n";
-		print "\nPress ENTER when that's done... ";
+		print "Send the following e-mail: \n\n";
+		print join "\n",
+			"Dag " . ($object->{'fullName'}{'firstName'}) . ",",
+			"",
+			"Je inschrijving bij Limesco is ontvangen. Welkom!",
+			"",
+			"Graag zouden wij je willen vragen om de gegevens hieronder te bevestigen, of indien nodig te corrigeren. Voorlopig doen we dat nog even handmatig met een reply op deze e-mail, omdat de geautomatiseerde infrastructuur nog niet af is.",
+			"",
+			"Naam: " . ($object->{'fullName'}{'firstName'} || "") . " " . ($object->{'fullName'}{'lastName'} || ""),
+			"Eventuele bedrijfsnaam voor facturering: (geen)",
+			"Adres: ",
+			"    " . ($object->{'address'}{'streetAddress'} || ""),
+			"    " . ($object->{'address'}{'postalCode'} || "") . " " . ($object->{'address'}{'locality'} || ""),
+			"Type abonnement: Out-of-the-box",
+			"  (De andere optie is 'Do it yourself', waarbij je verkeer langs een telefooncentrale loopt. Als je die optie kiest, vragen we later nog om extra accountgegevens.)",
+			"Data-abonnement:",
+			"",
+			"Ik wil mijn telefoonnummer naar Limesco porteren: ja/nee",
+			"Type nummer: zakelijk / prive / prepaid",
+			"Te porteren nummer: ",
+			"Huidige provider:",
+			"SIM-kaartnummer bij huidige provider:",
+			"Klantnummer bij huidige provider:",
+			"Einddatum contract bij huidige provider:",
+			"",
+			"";
+		print "Press ENTER when that's done... ";
 		<STDIN>;
 	} else {
 		print "Warning: Unchecked suggestion.\n";
