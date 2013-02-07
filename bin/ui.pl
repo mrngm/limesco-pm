@@ -54,14 +54,14 @@ $win->show();
 $win->focus();
 
 #my @account_ids = $lim->getAllAccountIds();
-my @account_ids = map { $_->{'id'} } $lim->getAllAccounts();
-$ui->progress(-max => 1, -message => "Loading account information...");
-my @accounts = ();
-foreach(@account_ids) {
-	push @accounts, $lim->getAccount($_);
-	$ui->setprogress(@accounts/@account_ids, "Loading accounts... " . @accounts . "/" . @account_ids);
-}
-$ui->noprogress;
+#$ui->progress(-max => 1, -message => "Loading account information...");
+#my @accounts = ();
+#foreach(@account_ids) {
+#	push @accounts, $lim->getAccount($_);
+#	$ui->setprogress(@accounts/@account_ids, "Loading accounts... " . @accounts . "/" . @account_ids);
+#}
+#$ui->noprogress;
+my @accounts = $lim->getAllAccounts();
 
 @accounts = sort { lc($a->{'fullName'}{'firstName'}||"") cmp lc($b->{'fullName'}{'firstName'}||"") } @accounts;
 @accounts = sort { lc($a->{'fullName'}{'lastName'}||"") cmp lc($b->{'fullName'}{'lastName'}||"") } @accounts;
