@@ -212,7 +212,7 @@ $listbox->onChange(sub {
 		-userdata => $account_id,
 		-title => "Account view: " . account_to_str($account));
 
-	my @sims = $lim->getSimsByOwnerId($account_id);
+	my @sims = sort { $a->{'iccid'} <=> $b->{'iccid'} } $lim->getSimsByOwnerId($account_id);
 
 	my $ext = $account->{'externalAccounts'} || {};
 	my $text = join "\n",
@@ -341,7 +341,7 @@ sub sim_to_str {
 
 	my $iccid = $sim->{'iccid'};
 
-	my $marker = "";
+	my $marker = "   ";
 	if($sim->{'state'} eq "STOCK") {
 		return "Stock SIM, ICCID " . $iccid;
 	} elsif($sim->{'state'} eq "ALLOCATED") {
