@@ -566,6 +566,32 @@ sub run_object_suggestion {
 			"";
 		print "Press ENTER when that's done... ";
 		<STDIN>;
+	} elsif($type eq "sim" && $suggestion->{'identifier'} eq "REQUEST_ACTIVATION") {
+		print "Log in to the SpeakUp portal at https://portal.speakup.nl/\n";
+		print "Click 'Order mobile number for new whitelabel customer'\n\n";
+		my $a = $lim->getAccount($object->{'ownerAccountId'});
+		print "Enter customer data:\n";
+		print "Name: " . ($a->{'companyName'} ? $a->{'companyName'} : ($a->{'fullName'}{'firstName'} . " " . $a->{'fullName'}{'lastName'})) . "\n";
+		print "Street + nr + addition: " . $a->{'address'}{'streetAddress'} . "\n";
+		print "Zipcode + City: " . $a->{'address'}{'postalCode'} . " " . $a->{'address'}{'locality'} . "\n";
+		print "\n";
+		my $is_ootb = $object->{'callConnectivityType'} eq "OOTB";
+		print "Order Type: " . ($is_ootb ? "Mobile" : "Mobile On PBX") . "\n";
+		print "Subscription Type: " . ($is_ootb ? "Pay as you go" : "PBX Lite") . "\n";
+		my $data = $object->{'apnType'};
+		print "Data-Package: " . (
+			$data eq "APN_NODATA" ? "No Data" :
+				$data eq "APN_500MB" ? "500 MB" : "2000 MB")
+			. "\n";
+		print "Comment: " . $object->{'iccid'} . "\n";
+		my $port = $object->{'portingState'} ne "NO_PORT";
+		print "Port Existing Number: " . ($port ? "Yes" : "No") . "\n";
+		if($port) {
+			print "Enter porting number as in confirmation e-mail\n";
+		}
+
+		print "\nPress ENTER when that's done...\n";
+		<STDIN>;
 	} else {
 		print "Warning: Unchecked suggestion.\n";
 	}
