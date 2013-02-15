@@ -22,7 +22,9 @@ if(!$lim->obtainToken($user, $pass)) {
 	die "Couldn't obtain token";
 }
 
-my $ui = Curses::UI->new(-clear_on_exit => 1, -color_support => 1);
+my $ui = Curses::UI->new(-clear_on_exit => 1,
+	-color_support => 1,
+	-mouse_support => 0);
 
 my $win;
 my $accountwin;
