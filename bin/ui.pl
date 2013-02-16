@@ -315,7 +315,9 @@ sub account_to_str {
 	my ($account, $html) = @_;
 
 	my $marker = "   ";
-	if($account->{'state'} eq "UNCONFIRMED") {
+	if($account->{'state'} eq "UNPAID") {
+		$marker = "[P]";
+	} elsif($account->{'state'} eq "UNCONFIRMED") {
 		$marker = "[U]";
 	} elsif($account->{'state'} eq "CONFIRMATION_IMPOSSIBLE") {
 		$marker = "[X]";
@@ -632,7 +634,7 @@ sub run_object_field_update {
 
 	if($type eq "account") {
 		%closed_choices = (
-			state => [qw(UNCONFIRMED CONFIRMATION_REQUESTED CONFIRMED CONFIRMATION_IMPOSSIBLE DEACTIVATED)],
+			state => [qw(UNPAID UNCONFIRMED CONFIRMATION_REQUESTED CONFIRMED CONFIRMATION_IMPOSSIBLE DEACTIVATED)],
 		);
 		%hashmaps = (
 			fullName => [qw(firstName lastName)],
