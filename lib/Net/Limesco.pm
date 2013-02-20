@@ -140,6 +140,30 @@ sub saveAccount {
 	return $self->_put("/accounts/$id", $account);
 }
 
+=head2 getInvoicesByAccountId (accountid)
+
+=cut
+
+sub getInvoicesByAccountId {
+	my ($self, $accountid) = @_;
+	croak "Missing account ID" if(!$accountid);
+	$self->_assertToken();
+	$self->_debug("Getting invoices from ID $accountid\n");
+	return @{$self->_get_json("/accounts/$accountid/invoices")};
+}
+
+=head2 getPaymentsByAccountId (accountid)
+
+=cut
+
+sub getPaymentsByAccountId {
+	my ($self, $accountid) = @_;
+	croak "Missing account ID" if(!$accountid);
+	$self->_assertToken();
+	$self->_debug("Getting payments from ID $accountid\n");
+	return @{$self->_get_json("/accounts/$accountid/payments")};
+}
+
 =head2 saveSim (sim)
 
 =cut
