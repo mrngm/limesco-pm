@@ -596,6 +596,57 @@ sub run_object_suggestion {
 
 		print "\nPress ENTER when that's done...\n";
 		<STDIN>;
+	} elsif($type eq "sim" && $suggestion->{'identifier'} eq "PROCESS_ACTIVATION") {
+		my $port = $object->{'portingState'} ne "NO_PORT";
+		print "Enter " . ($port?"temporary":"new") . " telephone number: ";
+		my $phone = <STDIN>;
+		1 while chomp($phone);
+		$phone =~ s/-//g;
+		$phone =~ s/^0031/31/g;
+		$phone =~ s/^0/31/g;
+
+		$these_proposed_updates->{phoneNumber} = $phone;
+
+		# TODO: porting state
+		if($port) {
+			# TODO: update porting state
+			# set contractStartDate to porting date
+		} else {
+			use Time::Local;
+			my @timefields = localtime();
+			pop @timefields; # isdst
+			pop @timefields; # yday
+			pop @timefields; # wday
+			$timefields[0] = $timefields[1] = $timefields[2] = 0; # date only
+			$these_proposed_updates->{contractStartDate} = timelocal(@timefields) * 1000;
+		}
+
+		my $phone_human = $phone;
+		if($phone_human =~ /^316(\d{8})/) {
+			$phone_human = "06-$1";
+		}
+
+		my $a = $lim->getAccount($object->{'ownerAccountId'});
+		print "Updates are prepared. Send a reply to the original activation e-mail/ticket:";
+		print "\n\n";
+		print "Hallo " . $a->{'fullName'}{'firstName'} . ",\n\n";
+		print "Je SIM is geactiveerd en heeft als " . ($port?"tijdelijk ":"nieuw ");
+		print "telefoonnummer $phone_human gekregen.";
+
+		if($object->{'apnType'} ne "APN_NODATA") {
+			print " Voor het gebruiken van je databundel moet je wellicht je telefoon nog instellen; kijk voor de benodigde instellingen op <https://secure.limesco.nl/wiki/Telefooninstellingen>.";
+		}
+
+		if($port) {
+			# TODO: porteergegevens
+			print "\n\nEr zal een portering plaatsvinden.";
+		}
+
+		print "\n\n";
+		print 'Stuur bij problemen met je SIM of voor feedback of suggesties een mailtje naar support@limesco.nl. Veel plezier met je Limesco SIM!';
+
+		print "\n\n\nPress ENTER when that's done...\n";
+		<STDIN>;
 	} else {
 		print "Warning: Unchecked suggestion.\n";
 	}
