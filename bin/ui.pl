@@ -533,6 +533,8 @@ sub run_object_suggestion {
 		print "On Account: " . account_to_str($object) . "\n\n";
 	} elsif($type eq "sim") {
 		print "On SIM: " . sim_to_str($object) . "\n\n";
+		my $account = $lim->getAccount($object->{'ownerAccountId'});
+		print "Of Account: " . account_to_str($account) . "\n\n";
 	} else {
 		die "Unknown object type";
 	}
