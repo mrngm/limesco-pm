@@ -110,6 +110,7 @@ $win->set_binding(sub {
 			$ui->dialog("There are no unallocated SIMs to allocate.");
 			return;
 		}
+		# TODO: CServ bug #79, allocating SIMs has a race condition
 		my $allocate_listbox = $accountwin->add('sim_allocbox', 'Listbox',
 			-values => [map {$_->{'iccid'}} @unallocated_sims],
 			-labels => {map {$_->{'iccid'} => sim_to_str($_, 0, 1)} @unallocated_sims},
