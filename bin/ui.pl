@@ -692,6 +692,7 @@ sub run_object_field_update {
 		%hashmaps = (
 			fullName => [qw(firstName lastName)],
 			address  => [qw(streetAddress postalCode locality)],
+			externalAccounts => [qw(speakup)],
 		);
 	} elsif($type eq "sim") {
 		%closed_choices = (
