@@ -474,6 +474,55 @@ sub allocateSim {
 	return 1;
 }
 
+=head2 dryrunInvoice(date, accountid)
+
+=cut
+
+sub dryrunInvoice {
+	my ($self, $date, $accountid) = @_;
+	$self->_assertToken();
+	$self->_debug("Doing invoice dry-run for %s\n", $accountid);
+	return $self->_post_json("/accounts/$accountid/invoices", {'dry-run' => 'true', 'date' => $date});
+}
+
+=head2 generateInvoice(date, accountid)
+
+=cut
+
+sub generateInvoice {
+	my ($self, $date, $accountid) = @_;
+	$self->_assertToken();
+	my $resp = $self->_post("/accounts/$accountid/invoices", {'dry-run' => 'false', 'date' => $date});
+	my $invoiceloc = $resp->{location};
+	if(!$invoiceloc) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	$self->_debug("Invoice generated for %s at %s\n", $accountid, $invoiceloc);
+
+	return $self->_get_json_url($invoiceloc);
+}
+
+=head2 getInvoice(accountid, invoiceid)
+
+=cut
+
+sub getInvoice {
+	my ($self, $accountid, $invoiceid) = @_;
+	$self->_assertToken();
+	return $self->_get_json("/accounts/$accountid/invoices/$invoiceid");
+}
+
+=head2 getInvoicePdf(accountid, invoiceid)
+
+=cut
+
+sub getInvoicePdf {
+	my ($self, $accountid, $invoiceid) = @_;
+	$self->_assertToken();
+	return $self->_get_pdf("/accounts/$accountid/invoices/$invoiceid");
+}
+
 =head1 DISPLAY METHODS
 
 =head2 account_to_str ($account, $html)
@@ -522,7 +571,7 @@ sub _debug {
 }
 
 sub __headers {
-	my ($self, $body, $bodytype) = @_;
+	my ($self, $body, $bodytype, $accepttype) = @_;
 	my %h;
 	if($body) {
 		$h{'Content'} = encode_json($body);
@@ -530,6 +579,9 @@ sub __headers {
 	}
 	if($self->{token}) {
 		$h{'X-Limesco-Token'} = $self->{token};
+	}
+	if($accepttype) {
+		$h{'Accept'} = $accepttype;
 	}
 	return %h;
 }
@@ -564,6 +616,17 @@ sub _get_json {
 	return decode_json($resp->{body});
 }
 
+sub _get_pdf {
+	my $self = shift;
+	my $url = shift;
+	my $resp = $self->_get($url, undef, undef, "application/pdf");
+	if(!$resp->{body}) {
+		warn $resp->{error} . "\n";
+		return;
+	}
+	return $resp->{body};
+}
+
 sub _get {
 	my $self = shift;
 	my $url = $self->__url(shift);
@@ -581,9 +644,9 @@ sub _get_json_url {
 }
 
 sub _get_url {
-	my ($self, $url, $body, $bodytype) = @_;
+	my ($self, $url, $body, $bodytype, $accepttype) = @_;
 	$self->_debug("Doing GET request to URL: %s\n", $url);
-	my $response = $self->{ua}->get($url, $self->__headers($body, $bodytype));
+	my $response = $self->{ua}->get($url, $self->__headers($body, $bodytype, $accepttype));
 	return $self->__wrap_response($response);
 }
 
