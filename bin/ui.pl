@@ -561,7 +561,7 @@ sub run_object_suggestion {
 			"Data-abonnement:",
 			"",
 			"Ik wil mijn telefoonnummer naar Limesco porteren: ja/nee",
-			"Type nummer: zakelijk / prive / prepaid",
+			"Contracttype van het te porteren nummer: zakelijk / prive / prepaid",
 			"Te porteren nummer: ",
 			"Huidige provider:",
 			"SIM-kaartnummer bij huidige provider:",
